@@ -1,0 +1,105 @@
+{
+	"pages": [ //pages数组中第一项表示应用启动页，参考：https://uniapp.dcloud.io/collocation/pages
+		{
+			"path": "pages/home/home",
+			"style": {
+				"navigationBarTitleText": "首页"
+			}
+		}, {
+  "path": "uni_modules/uni-upgrade-center-app/pages/upgrade-popup",
+  "style": {
+    "disableScroll": true,
+    "app-plus": {
+      "backgroundColorTop": "transparent",
+      "background": "transparent",
+      "titleNView": false,
+      "scrollIndicator": false,
+      "popGesture": "none",
+      "animationType": "fade-in",
+      "animationDuration": 200
+    }
+  }
+},
+		{
+			"path" : "pages/receive/receive-detail/receive-detail",
+			"style" : 
+			{
+				"navigationBarTitleText" : ""
+			}
+		},
+		{
+			"path" : "pages/receive/receive-scan/receive-scan",
+			"style" : 
+			{
+				"navigationBarTitleText" : ""
+			}
+		},
+		{
+			"path": "pages/warehousing/ware-detail/ware-detail",
+			"style": {
+				"navigationBarTitleText": ""
+			}
+		},
+		{
+			"path": "pages/warehousing/ware-scan/ware-scan",
+			"style": {
+				"navigationBarTitleText": ""
+			}
+		},
+		{
+			"path": "pages/outbound/outbound-detail1/outbound-detail1",
+			"style": {
+				"navigationBarTitleText": ""
+			}
+		},
+		{
+			"path": "components/ScanCode",
+			"style": {
+				"navigationBarTitleText": ""
+			}
+		},
+		{
+			"path": "pages/outbound/outbound-detail2/outbound-detail2",
+			"style": {
+				"navigationBarTitleText": ""
+			}
+		},
+		{
+			"path": "pages/outbound/outbound-detail3/outbound-detail3",
+			"style": {
+				"navigationBarTitleText": ""
+			}
+		},
+		{
+			"path": "pages/outbound/outbound-List/outbound-List",
+			"style": {
+				"navigationBarTitleText": ""
+			}
+		},
+		{
+			"path": "pages/outbound/outbound-List1/outbound-List1",
+			"style": {
+				"navigationBarTitleText": ""
+			}
+		},
+		{
+			"path": "pages/kehu/KehuQueding-1/KehuQueding-1",
+			"style": {
+				"navigationBarTitleText": ""
+			}
+		},
+		{
+			"path": "pages/kehu/KehuQueding-2/KehuQueding-2",
+			"style": {
+				"navigationBarTitleText": ""
+			}
+		}
+	],
+	"globalStyle": {
+		"navigationBarTextStyle": "black",
+		"navigationBarTitleText": "uni-app",
+		"navigationBarBackgroundColor": "#F8F8F8",
+		"backgroundColor": "#F8F8F8"
+	},
+	"uniIdRouter": {}
+}
