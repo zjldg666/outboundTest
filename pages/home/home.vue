@@ -105,6 +105,25 @@ const handleKehuQueding = () =>{
 	uni.navigateTo({ url: `/pages/kehu/KehuQueding-1/KehuQueding-1?SN=${encodeURIComponent(deviceId.value)}` });
 }
 
+// 待检验明细跳转
+const navigateToInspectionDetail = () => {
+  if (!checkDeviceId()) return;
+  // 这里填入你实际的检验明细页面路径，例如：
+  uni.navigateTo({ url: `/pages/Inspection/inspection-detail/inspection-detail?SN=${encodeURIComponent(deviceId.value)}` });
+ 
+}
+
+// 检验扫码功能
+const handleInspectionScan = () => {
+  scanCodeRef.value.scanCode({
+    deviceId: deviceId.value,
+    successCallback: (result) => {
+      // 这里填入你实际的检验扫码页面路径
+      uni.navigateTo({ url: `/pages/Inspection/inspection-scan/inspection-scan?DocNum=${encodeURIComponent(result.docNum)}&SN=${encodeURIComponent(result.deviceId)}` });
+     
+    }
+  });
+}
 // 辅助方法：检查设备ID
 const checkDeviceId = () => {
   if (!deviceId.value || deviceId.value.includes('unknown')) {
@@ -114,18 +133,23 @@ const checkDeviceId = () => {
   return true;
 }
 
-// 菜单数据列表 (在这里配置按钮)
 const menuList = [
+  // 第一行：明细类
   { text: '待收货明细', icon: '../../static/icon/Receive.png', action: navigateToReceiveDetail },
+  { text: '待检验明细', icon: '../../static/icon/Inspection.png', action: navigateToInspectionDetail }, // 【新增】建议更换为专用图标
   { text: '待入库明细', icon: '../../static/icon/Into.png', action: navigateToWareDetail },
   { text: '待出库明细', icon: '../../static/icon/Outbound.png', action: navigateToOutboundDetail },
+  
+  // 第二行：扫码类
   { text: '收货扫码', icon: '../../static/icon/ReceiveScan.png', action: handleReceiveScan },
+  { text: '检验扫码', icon: '../../static/icon/InspectionScan.png', action: handleInspectionScan }, // 【新增】建议更换为专用图标
   { text: '入库扫码', icon: '../../static/icon/IntoScan.png', action: handleWareScan },
   { text: '出库扫码', icon: '../../static/icon/OutboundScan.png', action: handleOutboundScan },
+  
+  // 第三行：其他
   { text: '待出库清单', icon: '../../static/icon/OutboundList.png', action: handleOutboundList },
   { text: '客户提货确认', icon: '../../static/icon/KehuQueding.png', action: handleKehuQueding }
 ]
-
 // ----------------------
 // 生命周期与基础逻辑
 // ----------------------
@@ -187,13 +211,12 @@ const copyDeviceId = () => {
 .menu-grid {
   flex: 1;
   display: grid;
-  /* 创建3列，每列宽度相等 */
-  grid-template-columns: repeat(3, 1fr); 
-  /* 设置行间距和列间距 */
-  gap: 20rpx; 
-  /* 整体内边距 */
-  padding: 40rpx;
-  /* 内容顶部对齐，避免垂直拉伸 */
+  /* --- 修改这里：将 repeat(3, 1fr) 改为 repeat(4, 1fr) --- */
+  grid-template-columns: repeat(4, 1fr); 
+  
+  /* 建议稍微减小间距，防止4个图标挤不下 */
+  gap: 15rpx; 
+  padding: 30rpx; /* 稍微减小内边距 */
   align-content: start; 
 }
 
@@ -225,15 +248,15 @@ const copyDeviceId = () => {
 }
 
 .icon {
-  width: 140rpx;
-  height: 140rpx;
+
+  width: 120rpx;
+  height: 120rpx;
   margin-bottom: 10rpx;
 }
 
 .text {
-  font-size: 15px;
+  font-size: 13px; 
 }
-
 /* 设备码样式保持不变 */
 .device-id-section {
   width: 100%;
