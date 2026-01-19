@@ -37,7 +37,7 @@
               <text class="item-label">待收货数：</text>
               <input 
                 class="item-input font-bold text-primary" 
-                :value="currentPendingQty || '请选择下方批次'"
+                :value="currentPendingQty || '请选择来料批次'"
                 :disabled="true"
                 :readonly="true"
                 type="text"
@@ -46,7 +46,7 @@
           </view>
 
           <view class="input-section" v-if="batchList.length > 0">
-            <text class="section-title">请选择通知单批次：(按照待收货数分批次)</text>
+            <text class="section-title">来料批次</text>
             <view class="batch-list">
               <view 
                 v-for="(item, index) in batchList" 
@@ -575,8 +575,11 @@ const submitReceive = async () => {
       result = response.data;
     }
 
-    if (result.isError === false) {
+	if (result.isError === false) {
       uni.showToast({ title: '收货成功', icon: 'success' });
+      
+      uni.$emit('refreshReceiveList');
+
       setTimeout(() => {
         uni.navigateBack({ delta: 1 });
       }, 1500); 

@@ -21,26 +21,34 @@
       </view>
 
       <view v-else class="table-container">
-              <view class="table-header">
-                <view class="header-row">
-                  <view class="header-cell">
-                      预交日期
-                    </view>
+              
+              <scroll-view scroll-x="true" class="table-scroll-x">
+                
+                <view class="table-header">
+                  <view class="header-row min-width-row">
+                    <view class="header-cell">预交日期</view>
                     
                     <view class="header-cell clickable" @click="openSearch('供应商', '供应商')">
                       供应商 <text class="filter-icon">▼</text>
                     </view>
                     
-                    <view class="header-cell clickable" @click="openSearch('订单号', '订单号', '供应商')">
-                      订单号 <text class="filter-icon">▼</text>
+
+                    
+                    <view class="header-cell clickable" @click="openSearch('业务料号', '业务料号')">
+                      业务料号 <text class="filter-icon">▼</text>
                     </view>
-                  <view class="header-cell">待收货数</view>
+                    
+                    <view class="header-cell">待收货数</view>
+					
+					<view class="header-cell clickable" @click="openSearch('订单号', '订单号', '供应商')">
+					  订单号 <text class="filter-icon">▼</text>
+					</view>
+                  </view>
                 </view>
-              </view>
-              
-              <view class="table-body">
+                
+                <view class="table-body">
                   <view 
-                    class="table-row" 
+                    class="table-row min-width-row" 
                     v-for="(item, index) in receiveData" 
                     :key="index"
                     :id="'row-' + index" 
@@ -49,13 +57,16 @@
                   >
                     <view class="table-cell">{{ item['预交日期'] }}</view>
                     <view class="table-cell">{{ item['供应商'] }}</view>
-                    <view class="table-cell">{{ item['订单号'] }}</view>
+                    
+                    <view class="table-cell">{{ item['业务料号'] }}</view>
                     <view class="table-cell">{{ item['待收货数'] }}</view>
+					<view class="table-cell">{{ item['订单号'] }}</view>
                   </view>
-              </view>
-        
-        <view style="height: 140rpx; width: 100%;"></view>
-      </view>
+                </view>
+                
+              </scroll-view>
+              <view style="height: 140rpx; width: 100%;"></view>
+            </view>
     </scroll-view>
 
     <view class="bottom-bar">
@@ -91,7 +102,7 @@
 import { ref, onMounted } from 'vue'
 import Navbar from "@/components/Navbar.vue"
 import Loading from "@/components/Loading.vue";
-import { onLoad } from '@dcloudio/uni-app';
+import { onLoad, onUnload } from '@dcloudio/uni-app'
 // 搜索组件
 import SearchModal from "@/components/SearchModal.vue"
 
@@ -129,6 +140,21 @@ onLoad((options) => {
   }
   apiParams.value.SN = SN;
   fetchReceiveData();
+    // 当从详情页(receive-scan)成功收货返回时，会触发这个回调
+    uni.$on('refreshReceiveList', () => {
+      console.log('收到刷新信号，开始刷新数据...');
+      // 重置筛选状态（可选）
+      // receiveData.value = []; 
+      // selectedIndex.value = -1;
+      
+      // 重新获取数据
+      fetchReceiveData();
+    });
+});
+
+// 【新增】页面卸载时移除监听，避免重复监听导致多次请求
+onUnload(() => {
+  uni.$off('refreshReceiveList');
 });
 
 // 行点击处理函数
@@ -344,6 +370,20 @@ onMounted(() => {
   flex-direction: column;
 }
 
+/* --- 新增：横向滚动容器 --- */
+.table-scroll-x {
+  width: 100%;
+  
+  overflow-x: auto; 
+}
+
+/* --- 强制行宽超出屏幕，触发滚动 --- */
+.min-width-row {
+
+  min-width: 950rpx; 
+  display: flex; /* 保持 flex 布局 */
+}
+
 /* 固定表头样式 */
 .table-header {
   position: sticky;
@@ -353,7 +393,8 @@ onMounted(() => {
   border: 1rpx solid #ddd;
   border-bottom: none;
   box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.05);
-  overflow: hidden;
+  width: fit-content; /* 让表头背景宽度跟随内容宽度，而不是屏幕宽度 */
+  min-width: 100%;    /* 至少占满屏幕 */
 }
 
 .header-row {
@@ -377,13 +418,11 @@ onMounted(() => {
 
 
 .table-body {
- 
-  width: 100%;
+  width: fit-content; /* 让表格主体宽度跟随内容宽度 */
+  min-width: 100%;
   border: 1rpx solid #ddd;
   border-top: none;
   background-color: #fff;
-  box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.05);
-  
 }
 
 .table-row {
@@ -412,30 +451,36 @@ onMounted(() => {
   text-overflow: ellipsis;
 }
 
-/* --- 核心修改：按比例分配列宽 (针对4列数据) --- */
 
-/* 1. 预交日期 */
+
+/* 1.  */
 .header-cell:nth-child(1),
 .table-cell:nth-child(1) {
-  flex: 2.5; 
+  flex: 2; 
 }
 
 /* 2. 供应商 */
 .header-cell:nth-child(2),
 .table-cell:nth-child(2) {
-  flex: 2.5; 
+  flex: 2; 
 }
 
-/* 3. 订单号 */
+/* 3. 业务料号 */
 .header-cell:nth-child(3),
 .table-cell:nth-child(3) {
-  flex: 3.2; 
+  flex: 2.8; 
 }
 
-/* 4. 待收货数 */
+/* 4 待收货数 */
 .header-cell:nth-child(4),
 .table-cell:nth-child(4) {
-  flex: 1.8; 
+  flex: 1.4; /* 给予和订单号类似的宽度 */
+}
+
+/* 5. 订单号 */
+.header-cell:nth-child(5),
+.table-cell:nth-child(5) {
+  flex: 2.8; 
   border-right: none; /* 最后一列去掉右边框 */
 }
 

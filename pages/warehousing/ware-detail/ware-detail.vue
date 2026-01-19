@@ -85,7 +85,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import Navbar from "@/components/Navbar.vue"
-import { onLoad } from '@dcloudio/uni-app';
+import { onLoad, onUnload } from '@dcloudio/uni-app'
 import Loading from "@/components/Loading.vue"
 // 【新增】引入搜索组件
 import SearchModal from "@/components/SearchModal.vue"
@@ -119,7 +119,21 @@ onLoad((options) => {
   }
   apiParams.value.SN = SN;
   fetchReceiveData();
+  //入库成功刷新数据
+  uni.$on('refreshReceiveList', () => {
+    console.log('收到刷新信号，开始刷新数据...');
+
+    
+    // 重新获取数据
+    fetchReceiveData();
+  });
 });
+
+// 页面卸载时移除监听，避免重复监听导致多次请求
+onUnload(() => {
+  uni.$off('refreshReceiveList');
+});
+
 
 // 获取待入库数据 
 const fetchReceiveData = async () => {

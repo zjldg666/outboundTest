@@ -38,7 +38,7 @@
               <text class="item-label">待入库数：</text>
               <input 
                 class="item-input font-bold text-primary" 
-                :value="currentPendingQty || '请选择下方批次'"
+                :value="currentPendingQty || '请选择入库批次'"
                 :disabled="true"
                 :readonly="true"
                 type="text"
@@ -47,7 +47,7 @@
           </view>
 
           <view class="input-section" v-if="inspectionList.length > 0">
-            <text class="section-title">请选择入库批次：(按照待入库数分批次)</text>
+            <text class="section-title">入库批次</text>
             <view class="batch-list">
               <view 
                 v-for="(item, index) in inspectionList" 
@@ -74,11 +74,95 @@
             </view>
             
             <view class="input-item">
-              <text class="item-label">入库板位：</text>
-              <button class="ware-button" @click="scanStoreCode" :disabled="!hasEditPermission">
-                {{ storeName || '板位扫码' }}
-              </button>
+                <text class="item-label">入库板位：</text>
+                
+                <view class="store-btn-group">
+                  <button 
+                    class="ware-button common-btn" 
+                    :class="{ 'text-primary font-bold': storeName }"
+                    @click="scanStoreCode" 
+                    :disabled="!hasEditPermission"
+                  >
+                    {{ storeName || '板位扫码' }}
+                  </button>
+
+                  <button 
+                    class="ware-button common-btn" 
+                    @click="openStoreSelect" 
+                    :disabled="!hasEditPermission"
+                  >
+                    手动选择
+                  </button>
+                </view>
             </view>
+                        
+			<view v-if="showStoreModal" class="confirm-modal">
+			  <view class="modal-content store-modal-content">
+			    
+			    <view class="modal-header">
+			      <text class="modal-title">选择入库板位</text>
+			      <text class="close-icon" @click="closeStoreSelect">×</text>
+			    </view>
+			
+			    <view class="store-search-box">
+			      <view class="search-input-wrapper">
+			        <text class="search-icon">🔍</text>
+			        <input 
+			          class="search-input" 
+			          v-model="storeSearchKey" 
+			          placeholder="搜索板位名称或编码" 
+			          confirm-type="search"
+			        />
+			        <text v-if="storeSearchKey" class="clear-icon" @click="storeSearchKey=''">×</text>
+			      </view>
+			    </view>
+			    
+			    <scroll-view v-if="storeSearchKey" scroll-y class="search-result-list">
+			      <view 
+			        v-for="(item, index) in searchResults" 
+			        :key="item.ST_ID || index"
+			        class="store-item search-item"
+			        @click="confirmStoreSelection(item)"
+			      >
+			        <view class="item-main">{{ item.ST_NAME }}</view>
+			        <view class="item-sub" v-if="item.ST_CODE">{{ item.ST_CODE }}</view>
+			      </view>
+			      <view v-if="searchResults.length === 0" class="empty-tip">
+			        未找到相关板位
+			      </view>
+			    </scroll-view>
+			
+			    <view v-else class="store-picker-body">
+			      <scroll-view scroll-y class="store-col left-col">
+			        <view 
+			          v-for="(parent, index) in storeTree" 
+			          :key="parent.ST_ID"
+			          class="store-item parent-item"
+			          :class="{ 'active': activeParentIndex === index }"
+			          @click="handleParentClick(index)"
+			        >
+			          {{ parent.ST_NAME }}
+			        </view>
+			      </scroll-view>
+			      
+			      <scroll-view scroll-y class="store-col right-col">
+			        <view v-if="storeTree[activeParentIndex] && storeTree[activeParentIndex].children.length > 0">
+			           <view 
+			            v-for="(child, cIndex) in storeTree[activeParentIndex].children" 
+			            :key="child.ST_ID"
+			            class="store-item child-item"
+			            @click="confirmStoreSelection(child)"
+			          >
+			            {{ child.ST_NAME }}
+			          </view>
+			        </view>
+			        <view v-else class="empty-tip">无子级板位</view>
+			      </scroll-view>
+			    </view>
+			
+			  </view>
+			</view>
+				
             
             <view class="input-item">
               <text class="item-label">入货备注：</text>
@@ -274,6 +358,26 @@ const selectedInspectionIndex = ref(-1); // 当前选中的索引
 const currentPendingQty = ref(''); // 当前显示的待入库数
 const showConfirm = ref(false); // 控制确认弹窗显示
 const hasEditPermission = ref(false); // 新增：存储入库权限状态
+
+const showStoreModal = ref(false); // 控制弹窗显示
+const storeTree = ref([]); // 存放处理后的树形数据
+const activeParentIndex = ref(0); // 当前选中的父级索引
+const allStoreList = ref([]); // 存放扁平化的原始数据
+const storeSearchKey = ref(''); // 搜索关键词
+import { computed } from 'vue'; // 确保引入 computed
+
+const searchResults = computed(() => {
+  if (!storeSearchKey.value) return [];
+  const key = storeSearchKey.value.toLowerCase();
+  
+  // 从全量数据中过滤
+  return allStoreList.value.filter(item => {
+    const name = String(item.ST_NAME || '').toLowerCase();
+    const code = String(item.ST_CODE || '').toLowerCase();
+    return name.includes(key) || code.includes(key);
+  });
+});
+
 const apiParams = ref({
   DocNum: '',
   SN: '',
@@ -293,16 +397,23 @@ const formData = reactive({
 
 onLoad((options) => {
   console.log('接收的参数:', options);
-  const DocNum = options.DocNum;
-  const SN = options.SN;
   
-  if (!DocNum || !SN) {
+  // 1. 获取参数（建议改个局部变量名，比如 docNumVal，或者直接处理）
+  const docNumVal = options.DocNum; 
+  const snVal = options.SN;
+  
+  if (!docNumVal || !snVal) {
     errorMsg.value = '参数错误：缺少订单号或设备码';
     return;
   }
 
-  apiParams.value.DocNum = DocNum;
-  apiParams.value.SN = SN;
+  // 2. ✅ 正确赋值给顶部的响应式变量 (注意要加 .value)
+  DocNum.value = docNumVal; 
+
+  // 3. 同时赋值给接口参数
+  apiParams.value.DocNum = docNumVal;
+  apiParams.value.SN = snVal;
+  
   fetchOrderInfo();
 });
 
@@ -334,6 +445,92 @@ const selectInspection = (index) => {
   // 保留：供应商、业务料号、客户料号、订单号 等信息
   
   commonOrderInfo.value = displayInfo;
+};
+
+// 1. 打开板位选择弹窗
+const openStoreSelect = async () => {
+  if (!hasEditPermission.value) { /* ... */ return; }
+  
+  storeSearchKey.value = ''; // 【新增】每次打开重置搜索词
+  
+  if (storeTree.value.length === 0) {
+    await fetchStoreList();
+  }
+  if (storeTree.value.length > 0) {
+    showStoreModal.value = true;
+  }
+};
+
+// 2. 关闭弹窗
+const closeStoreSelect = () => {
+  showStoreModal.value = false;
+};
+
+// 3. 获取并处理板位列表数据
+const fetchStoreList = () => {
+  uni.showLoading({ title: '加载板位...' });
+  return new Promise((resolve) => {
+    uni.request({
+      url: 'http://13.94.38.44:8080/YLT_CpRk/Show_AllStoreName',
+      method: 'POST',
+      data: { "SQL": "SCDATA_YLT_20250930" },
+      success: (res) => {
+        let result = res.data;
+        if (typeof result === 'string') {
+          try { result = JSON.parse(result); } catch (e) {}
+        }
+
+        if (result && !result.isError && result.dt) {
+          allStoreList.value = result.dt; // 【新增】保存原始数据供搜索使用
+          processStoreData(result.dt);    // 处理树形结构
+        } else {
+          uni.showToast({ title: '获取板位失败', icon: 'none' });
+        }
+      },
+      fail: (err) => { /* ...保持原有错误处理... */ },
+      complete: () => {
+        uni.hideLoading();
+        resolve();
+      }
+    });
+  });
+};
+
+// 4. 数据处理逻辑 (核心算法)
+const processStoreData = (dataList) => {
+  // 第一步：找到所有目录 (ST_PARENT 为 "TREETOP")
+  const roots = dataList.filter(item => item.ST_PARENT === 'TREETOP');
+  
+  // 第二步：遍历目录，寻找其子级
+  const tree = roots.map(root => {
+    // 找到 ST_PARENT 等于当前目录 ST_CODE 的数据
+    const children = dataList.filter(child => child.ST_PARENT === root.ST_CODE);
+    return {
+      ...root,
+      children: children
+    };
+  });
+  
+  storeTree.value = tree;
+  console.log('构建的板位树:', tree);
+};
+
+// 5. 点击父级分类
+const handleParentClick = (index) => {
+  activeParentIndex.value = index;
+};
+
+// 6. 确认选择子级板位
+const confirmStoreSelection = (childItem) => {
+  storeName.value = childItem.ST_NAME;
+  storeCode.value = childItem.ST_CODE; // 记录板位编码
+  
+  showStoreModal.value = false; // 关闭弹窗
+  
+  uni.showToast({
+    title: `已选择: ${childItem.ST_NAME}`,
+    icon: 'none'
+  });
 };
 
 // 输入验证：只允许正整数
@@ -692,7 +889,7 @@ const confirmSubmit = async () => {
   await submitReceive();
 };
 
-// 提交入库信息
+
 // 提交入库信息
 const submitReceive = async () => {
   // 验证权限
@@ -762,15 +959,16 @@ const submitReceive = async () => {
       result = response.data;
     }
 
-    if (result.isError === false) {
-      uni.showToast({ title: '入库成功', icon: 'success' });
+	if (result.isError === false) {
+      uni.showToast({ title: '收货成功', icon: 'success' });
       
-      // 延迟1.5秒后返回上一级页面
+      uni.$emit('refreshReceiveList');
+
       setTimeout(() => {
         uni.navigateBack({ delta: 1 });
       }, 1500); 
     } else {
-      uni.showToast({ title: result.msg || '提交失败', icon: 'none' });
+      uni.showToast({ title: result.msg || '数量发生变化，请重新扫码', icon: 'none' });
     }
   } catch (err) {
     console.error('提交失败:', err);
@@ -939,8 +1137,11 @@ const submitReceive = async () => {
   color: #029999;
 }
 
-.text-primary {
-  color: #0066cc;
+.common-btn.text-primary {
+  background-color: #f0f8ff !important; /* 对应 item-input.text-primary 的浅蓝背景 */
+  border-color: #0066cc !important;     /* 对应 item-input.text-primary 的深蓝边框 */
+  color: #0066cc !important;            /* 深蓝文字 */
+  font-weight: bold;
 }
 
 /* 为特殊字段添加样式 */
@@ -954,6 +1155,7 @@ const submitReceive = async () => {
   background-color: #f0f8ff;
   border-color: #0066cc;
   font-weight: bold;
+  color: #0066cc;
 }
 
 /* 新增字段区域样式 */
@@ -1216,5 +1418,207 @@ const submitReceive = async () => {
 
 .active-batch .batch-id {
   color: #666;
+}
+
+
+/* --- 按钮组容器 --- */
+.store-btn-group {
+  flex: 1;               /* 填满右侧剩余空间 */
+  display: flex;         /* 启用 Flex 布局 */
+  gap: 20rpx;            /* 两个按钮之间的间距 */
+  align-items: center;   /* 垂直居中 */
+}
+
+/* --- 统一按钮样式 --- */
+.common-btn {
+  flex: 1;               /* 核心：两个按钮平分宽度 */
+  width: auto !important;/* 覆盖原 .ware-button 的固定宽度 */
+  height: 80rpx;         /* 统一高度 */
+  line-height: 80rpx;    /* 统一行高 */
+  font-size: 26rpx;      /* 统一字体大小 */
+  padding: 0 10rpx;      /* 左右内边距 */
+  margin: 0;             /* 去除默认 margin */
+  
+  /* 统一外观风格 (仿照原来的输入框风格) */
+  background-color: #f9f9f9; 
+  border: 1rpx solid #e0e0e0;
+  border-radius: 8rpx;
+  color: #333;
+  
+  /* 文本样式 */
+  text-align: center;    /* 建议居中显示，比左对齐更美观 */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 点击时的反馈效果 */
+.common-btn:active {
+  background-color: #e0e0e0;
+}
+
+/* 覆盖原有的 .ware-button 样式冲突 (如果原样式中写了 width: 500rpx) */
+.ware-button {
+  width: auto; 
+}
+
+/* 扫码按钮样式 (左边，稍微宽一点显示名称) */
+.half-btn {
+  flex: 1.5;
+  font-size: 26rpx;
+  background-color: #f9f9f9; /* 默认灰色 */
+  color: #333;
+  border: 1rpx solid #e0e0e0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 选择按钮样式 (右边，蓝色) */
+.select-btn {
+  flex: 0.8;
+  background-color: #007aff;
+  color: white;
+  font-size: 26rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10rpx;
+}
+
+/* --- 弹窗样式 --- */
+.store-modal-content {
+  width: 90%;
+  height: 70vh; /* 弹窗高度 */
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+
+.store-picker-body {
+  flex: 1;
+  display: flex;
+  border-top: 1rpx solid #eee;
+  height: 0; /* 配合 flex:1 实现滚动 */
+}
+
+.store-col {
+  height: 100%;
+}
+
+/* 左侧父级列表 */
+.left-col {
+  flex: 1;
+  background-color: #f5f5f5;
+  border-right: 1rpx solid #eee;
+}
+
+/* 右侧子级列表 */
+.right-col {
+  flex: 1.5;
+  background-color: #fff;
+}
+
+.store-item {
+  padding: 24rpx 20rpx;
+  font-size: 28rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+/* 选中的父级样式 */
+.parent-item.active {
+  background-color: #fff;
+  color: #007aff;
+  font-weight: bold;
+  border-left: 6rpx solid #007aff;
+}
+
+.child-item:active {
+  background-color: #f0f8ff;
+}
+
+.modal-header {
+  position: relative;
+  padding: 30rpx;
+  text-align: center;
+}
+
+.close-icon {
+  position: absolute;
+  right: 30rpx;
+  top: 20rpx;
+  font-size: 40rpx;
+  color: #999;
+  padding: 10rpx;
+}
+
+.empty-tip {
+  padding: 30rpx;
+  text-align: center;
+  color: #999;
+  font-size: 26rpx;
+}
+/* 在 style 底部添加 */
+
+/* --- 搜索框样式 --- */
+.store-search-box {
+  padding: 10rpx 20rpx;
+  background-color: #fff;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.search-input-wrapper {
+  background-color: #f5f5f5;
+  border-radius: 30rpx;
+  padding: 0 20rpx;
+  height: 70rpx;
+  display: flex;
+  align-items: center;
+}
+
+.search-icon { 
+  font-size: 28rpx; 
+  margin-right: 10rpx; 
+  color: #999;
+}
+
+.search-input { 
+  flex: 1; 
+  font-size: 28rpx; 
+  height: 100%; 
+}
+
+.clear-icon { 
+  font-size: 32rpx; 
+  color: #999; 
+  padding: 10rpx; 
+}
+
+/* --- 搜索结果列表样式 --- */
+.search-result-list {
+  flex: 1; /* 占据剩余空间 */
+  height: 0; /* 配合 flex:1 */
+  background-color: #fff;
+}
+
+.search-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24rpx 30rpx !important; /* 覆盖 .store-item 的 padding */
+}
+
+.item-main {
+  font-size: 28rpx;
+  color: #333;
+}
+
+.item-sub {
+  font-size: 24rpx;
+  color: #999;
 }
 </style>
